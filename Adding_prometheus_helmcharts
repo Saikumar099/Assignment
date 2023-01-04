@@ -1,0 +1,74 @@
+# Prometheus deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+      - name: prometheus
+        image: prom/prometheus:v2.23.1
+        ports:
+        - containerPort: 9090
+          name: http
+        args:
+          - "--config.file=/etc/prometheus/prometheus.yml"
+          - "--storage.tsdb.path=/prometheus"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/prometheus
+        - name: storage
+          mountPath: /prometheus
+      volumes:
+      - name: config
+        configMap:
+          name: prometheus-config
+      - name: storage
+        emptyDir: {}
+---
+# Prometheus service
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 9090
+    targetPort: 9090
+  selector:
+    app: prometheus
+---
+# Prometheus ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+data:
+  prometheus.yml: |-
+    global:
+      scrape_interval: 15s
+    scrape_configs:
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+      - job_name: 'crypto-exporter'
+        static_configs:
+          - targets: ['crypto-exporter:8080']
+
+# This will create a Prometheus deployment, service, and ConfigMap. The ConfigMap contains the Prometheus configuration file,
+# which specifies the interval at which Prometheus should scrape the targets, and the targets to scrape (in this case, localhost:9090 
+# for Prometheus itself, and crypto-exporter:8080 for the exporter).
+# To deploy the chart with Prometheus included, you can use the helm install command as before:
+   #  helm install prometheus-stack path/to/chart/directory --set hpa.enabled=true
+# This will create the exporter, Prometheus, and optional HPA in the cluster, and Prometheus will scrape the exporter for metrics. You can access
+# the Prometheus UI via the service's load balancer. 
+
