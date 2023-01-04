@@ -1,0 +1,65 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+)
+
+const apiURL = "https://api.coinmarketcap.com/v2/ticker/"
+
+// Coin represents a cryptocurrency
+type Coin struct {
+	ID             int     `json:"id"`
+	Name           string  `json:"name"`
+	Symbol         string  `json:"symbol"`
+	Rank           int     `json:"rank"`
+	PriceUsd       float64 `json:"price_usd"`
+	PriceBtc       float64 `json:"price_btc"`
+	Volume24hUsd   float64 `json:"24h_volume_usd"`
+	MarketCapUsd   float64 `json:"market_cap_usd"`
+	AvailableSupply float64 `json:"available_supply"`
+	TotalSupply    float64 `json:"total_supply"`
+	MaxSupply      float64 `json:"max_supply"`
+	PercentChange1h float64 `json:"percent_change_1h"`
+	PercentChange24h float64 `json:"percent_change_24h"`
+	PercentChange7d float64 `json:"percent_change_7d"`
+	LastUpdated    int     `json:"last_updated"`
+	Price          map[string]float64
+	Volume24h      map[string]float64
+	MarketCap      map[string]float64
+}
+
+// CoinMarketCapResponse represents the response from the CoinMarketCap API
+type CoinMarketCapResponse struct {
+	Data map[string]Coin `json:"data"`
+	Metadata struct {
+		Timestamp           int `json:"timestamp"`
+		NumCryptocurrencies int `json:"num_cryptocurrencies"`
+		Error               string `json:"error"`
+	} `json:"metadata"`
+}
+
+// Exporter represents the Prometheus exporter
+type Exporter struct {
+	currentPrice *prometheus.GaugeVec
+	high         *prometheus.GaugeVec
+	low          *prometheus.GaugeVec
+}
+
+// NewExporter creates a new instance of the Exporter
+func NewExporter() *Exporter {
+	return &Exporter{
+		currentPrice: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "crypto_current_price_usd",
+			Help: "Current price of the cryptocurrency in USD",
+		}, []string{"symbol"}),
+		high: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "crypto_high_usd",
+			Help: "High price of the cryptocurrency in USD",
+		}, []string{"symbol"}),
+		low: prometheus.New
